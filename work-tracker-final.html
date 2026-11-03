@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 16px;
+}
+.container {
+  width: 100%; max-width: 500px; background: #fff; border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3); overflow: hidden;
+  display: flex; flex-direction: column; height: 92vh; max-height: 900px;
+}
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 14px 20px; text-align: center; }
+.header h1 { font-size: 22px; margin-bottom: 2px; }
+.header p { font-size: 12px; opacity: .9; margin-bottom: 6px; }
+.date-badge { background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; }
+
+.nav-tabs { display: flex; gap: 6px; padding: 10px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; overflow-x: auto; }
+.nav-button {
+  padding: 7px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 20px;
+  font-size: 12px; cursor: pointer; white-space: nowrap; font-weight: 500; color: #666;
+}
+.nav-button.active { background: #667eea; color: #fff; border-color: #667eea; }
+
+.content { flex: 1; padding: 18px; overflow-y: auto; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+.status-banner { border-radius: 10px; padding: 12px; margin-bottom: 14px; font-weight: 600; text-align: center; font-size: 14px; display: none; }
+.status-banner.success { background: #d1fae5; color: #065f46; border: 2px solid #6ee7b7; }
+.status-banner.warning { background: #fed7aa; color: #92400e; border: 2px solid #fdba74; }
+
+.welcome { text-align: center; padding-top: 20px; }
+.greeting { font-size: 26px; font-weight: 600; color: #333; margin-bottom: 30px; }
+.checkin-button {
+  width: 120px; height: 120px; border-radius: 50%; border: none; color: #fff; font-size: 46px; cursor: pointer;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 10px 30px rgba(102,126,234,.4);
+  margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
+}
+.checkin-button:active { transform: scale(.95); }
+.status-text { color: #999; font-size: 14px; }
+
+.info-card { background: #f8f9ff; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 2px solid #e8ebf7; }
+.info-card.success { background: #f0fdf4; border-color: #bbf7d0; }
+.info-label { color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.info-value { font-size: 26px; font-weight: 600; color: #333; }
+.info-card.success .info-value { color: #16a34a; }
+.note { font-size: 11px; color: #666; margin-top: 6px; }
+
+.timer-card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid #e5e7eb; text-align: center; }
+.timer-card .label { font-size: 12px; color: #999; margin-bottom: 6px; }
+.timer-card .value { font-size: 30px; font-weight: 700; color: #333; font-variant-numeric: tabular-nums; }
+.timer-card .remaining { font-size: 13px; color: #666; margin-top: 6px; }
+
+.btn { padding: 12px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-danger { background: #ef4444; color: #fff; width: 100%; }
+.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+.btn-secondary { background: #f3f4f6; color: #333; border: 1px solid #e5e7eb; }
+.btn-success { background: #22c55e; color: #fff; }
+.button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+
+.card { background: #f9fafb; border-radius: 12px; padding: 16px; border: 1px solid #e5e7eb; }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+.form-input { width: 100%; padding: 11px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
+.form-input:focus { outline: none; border-color: #667eea; }
+.hint { font-size: 11px; color: #888; margin-top: 4px; }
+
+.leave-type-option {
+  padding: 11px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; background: #fff;
+  font-size: 13px; font-weight: 500; color: #333; margin-bottom: 8px;
+}
+.leave-type-option.selected { border-color: #667eea; background: #667eea; color: #fff; }
+
+.filter-row { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 4px; }
+.filter-tab, .week-btn {
+  padding: 7px 11px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.filter-tab.active, .week-btn.active { background: #667eea; color: #fff; border-color: #667eea; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.summary div { background: #f3f4f6; border-radius: 8px; padding: 8px; text-align: center; font-size: 11px; color: #666; }
+.summary b { display: block; font-size: 16px; color: #333; }
+
+.history-item {
+  background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #e5e7eb;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.history-item.leave { background: #fef3c7; border-color: #fde68a; }
+.history-date { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 3px; }
+.history-time { font-size: 12px; color: #666; }
+.tag { display: inline-block; font-size: 10px; color: #555; background: #eef2ff; border-radius: 6px; padding: 1px 6px; margin-top: 4px; }
+.badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+.badge.ok { background: #d1fae5; color: #065f46; }
+.badge.short { background: #fed7aa; color: #92400e; }
+.badge.leave { background: #fde68a; color: #92400e; }
+
+.preview { margin-top: 10px; }
+.export-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e5e7eb; }
+.export-btn { padding: 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 12px; cursor: pointer; }
+.empty-state { text-align: center; padding: 30px 10px; color: #999; font-size: 13px; }
+
+.footer { background: #f9fafb; padding: 10px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #e5e7eb; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 99; }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 20px; max-width: 340px; width: 100%; }
+.modal h3 { color: #92400e; margin-bottom: 8px; }
+.modal p { font-size: 14px; color: #444; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⏱️ Work Tracker</h1>
+    <p>Check-in · Leave · History</p>
+    <div class="date-badge" id="headerDate"></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-button active" data-screen="welcomeScreen" onclick="switchScreen('welcomeScreen')">Check-in</button>
+    <button class="nav-button" data-screen="activeScreen" onclick="switchScreen('activeScreen')">Active</button>
+    <button class="nav-button" data-screen="pastScreen" onclick="switchScreen('pastScreen')">Past Entry</button>
+    <button class="nav-button" data-screen="leaveScreen" onclick="switchScreen('leaveScreen')">Leave</button>
+    <button class="nav-button" data-screen="historyScreen" onclick="switchScreen('historyScreen')">History</button>
+  </div>
+
+  <div class="content">
+    <!-- SCREEN 1: Check-in -->
+    <div class="screen active" id="welcomeScreen">
+      <div class="status-banner" id="welcomeBanner"></div>
+      <div class="welcome">
+        <div class="greeting">Welcome</div>
+        <button class="checkin-button" onclick="startCheckIn()">✓</button>
+        <div class="status-text" id="welcomeStatus">Tap to check in</div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: Active checkout page -->
+    <div class="screen" id="activeScreen">
+      <div class="status-banner" id="reminderBanner"></div>
+
+      <div class="info-card">
+        <div class="info-label">Check-in Time</div>
+        <div class="info-value" id="checkinTime">--:--</div>
+      </div>
+
+      <div class="info-card success">
+        <div class="info-label">Target Time (7 hours)</div>
+        <div class="info-value" id="targetTime">--:--</div>
+        <div class="note" id="alarmNote">🔔 Alarm 5 minutes before</div>
+        <div class="note" id="autoNote">Auto checkout at 9 hours if you forget</div>
+      </div>
+
+      <div class="timer-card">
+        <div class="label">⏱️ Time Elapsed</div>
+        <div class="value" id="elapsedTime">0h 0m 0s</div>
+        <div class="remaining" id="remainingText">No active check-in</div>
+      </div>
+
+      <button class="btn btn-danger" onclick="requestCheckout()">Check Out</button>
+    </div>
+
+    <!-- SCREEN 3: Past entry -->
+    <div class="screen" id="pastScreen">
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label">📅 Date</label>
+          <input type="date" id="pastDate" class="form-input" oninput="updatePastPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🟢 Check-in Time</label>
+          <input type="time" id="pastIn" class="form-input" oninput="updatePastPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🔴 Check-out Time</label>
+          <input type="time" id="pastOut" class="form-input" oninput="updatePastPreview()">
+        </div>
+        <div class="status-banner" id="pastPreview"></div>
+        <div class="button-group">
+          <button class="btn btn-secondary" onclick="clearPastForm()">Clear</button>
+          <button class="btn btn-primary" onclick="savePastEntry()">Save Entry</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: Leave -->
+    <div class="screen" id="leaveScreen">
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label">📅 Leave Date</label>
+          <input type="date" id="leaveDate" class="form-input">
+          <div class="hint">You can pick today, a past date or a future date</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🏷️ Leave Type</label>
+          <div class="leave-type-option" onclick="selectLeaveType(this,'Compensatory Leave')">💼 Compensatory Leave</div>
+          <div class="leave-type-option" onclick="selectLeaveType(this,'LOP')">📋 LOP (Leave Without Pay)</div>
+          <div class="leave-type-option" onclick="selectLeaveType(this,'Sick Leave')">🏥 Sick Leave</div>
+          <div class="leave-type-option" onclick="selectLeaveType(this,'Privileged Leave')">⭐ Privileged Leave</div>
+          <div class="leave-type-option" onclick="selectLeaveType(this,'Compassionate Leave')">💙 Compassionate Leave</div>
+        </div>
+        <div class="button-group">
+          <button class="btn btn-secondary" onclick="resetLeaveForm()">Clear</button>
+          <button class="btn btn-success" onclick="markLeave()">Mark Leave</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: History -->
+    <div class="screen" id="historyScreen">
+      <div class="status-banner" id="historyBanner"></div>
+      <div class="filter-row" id="monthFilter"></div>
+      <div class="filter-row" id="weekFilter"></div>
+      <div class="summary" id="summaryBox"></div>
+      <div id="historyList"></div>
+      <div class="export-buttons">
+        <button class="export-btn" onclick="exportCSV()">📥 Export CSV</button>
+        <button class="export-btn" onclick="exportPDF()">📄 Export PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">🔒 Data stored only on this device</div>
+</div>
+
+<!-- Early checkout confirmation (below 7 hours only) -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>⚠️ Below 7 hours</h3>
+    <p id="modalText"></p>
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmEarlyCheckout()">Yes, check out</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TARGET_MS = 7 * 60 * 60 * 1000;          // 7 hours target
+const REMINDER_BEFORE_MS = 5 * 60 * 1000;      // alarm 5 minutes before target
+const AUTO_CHECKOUT_MS = 9 * 60 * 60 * 1000;   // auto checkout if forgotten
+const STORE_KEY = 'workTrackerV2';
+
+let state = { checkedIn: false, checkinTs: null, reminderSent: false };
+let history = [];
+let selectedLeaveType = null;
+let selectedMonth = null;
+let selectedWeek = 0;          // 0 = all weeks
+let visibleRecords = [];
+
+/* ---------- Storage ---------- */
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify({ state, history }));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      state = Object.assign({ checkedIn: false, checkinTs: null, reminderSent: false }, d.state || {});
+      history = d.history || [];
+      return;
+    }
+    // Migrate data from the earlier version, if present
+    const oldHist = localStorage.getItem('workTrackerHistory');
+    if (oldHist) {
+      history = JSON.parse(oldHist).map(migrateOld).filter(Boolean);
+    }
+    const oldState = localStorage.getItem('workTrackerState');
+    if (oldState) {
+      const o = JSON.parse(oldState);
+      if (o.checkedIn && o.checkinTime) {
+        state = { checkedIn: true, checkinTs: o.checkinTime, reminderSent: false };
+      }
+    }
+    save();
+  } catch (e) {
+    console.error('Load failed', e);
+  }
+}
+
+function migrateOld(r) {
+  if (r.type === 'leave') {
+    return { type: 'leave', ts: r.timestamp, leaveType: r.leaveType };
+  }
+  if (r.type === 'checkin' && r.timestamp && r.durationMinutes != null) {
+    return makeWork(r.timestamp, r.timestamp + r.durationMinutes * 60000, {});
+  }
+  return null;
+}
+
+/* ---------- Helpers ---------- */
+const pad = n => String(n).padStart(2, '0');
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function fmtDate(ts) {
+  return new Date(ts).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function fmtHM(ms) {
+  if (ms < 0) ms = 0;
+  return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
+}
+
+function fmtHMS(ms) {
+  if (ms < 0) ms = 0;
+  return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+}
+
+function monthKeyOf(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+function monthLabel(key) {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// Week 1 = days 1-7, Week 2 = 8-14, Week 3 = 15-21, Week 4 = 22-end of month
+function weekOf(ts) {
+  return Math.min(4, Math.ceil(new Date(ts).getDate() / 7));
+}
+
+function makeWork(checkinTs, checkoutTs, opts) {
+  return {
+    type: 'checkin',
+    ts: checkinTs,
+    checkinTs: checkinTs,
+    checkoutTs: checkoutTs,
+    durationMs: checkoutTs - checkinTs,
+    auto: !!(opts && opts.auto),
+    manual: !!(opts && opts.manual)
+  };
+}
+
+function showBanner(id, kind, text) {
+  const el = document.getElementById(id);
+  el.className = 'status-banner ' + kind;
+  el.textContent = text;
+  el.style.display = 'block';
+}
+
+function hideBanner(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+/* ---------- Check-in / Checkout ---------- */
+function startCheckIn() {
+  if (state.checkedIn) {
+    switchScreen('activeScreen');
+    return;
+  }
+  // Ask for notification permission on a user tap (required on phones)
+  if ('Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+  state = { checkedIn: true, checkinTs: Date.now(), reminderSent: false };
+  save();
+  hideBanner('welcomeBanner');
+  hideBanner('reminderBanner');
+  renderAll();
+  switchScreen('activeScreen');
+  tick();
+}
+
+function requestCheckout() {
+  if (!state.checkedIn) {
+    alert('You are not checked in.');
+    return;
+  }
+  const elapsed = Date.now() - state.checkinTs;
+  if (elapsed >= TARGET_MS) {
+    // 7 hours or more: save directly, no popup
+    finishCheckout(Date.now(), false);
+    switchScreen('welcomeScreen');
+  } else {
+    // Below 7 hours: confirmation popup
+    document.getElementById('modalText').innerHTML =
+      `You have worked <b>${fmtHM(elapsed)}</b>, which is below 7 hours.<br><br>Do you still want to check out now?`;
+    document.getElementById('modal').classList.add('show');
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function confirmEarlyCheckout() {
+  closeModal();
+  finishCheckout(Date.now(), false);
+  switchScreen('welcomeScreen');
+}
+
+function finishCheckout(endTs, auto) {
+  const rec = makeWork(state.checkinTs, endTs, { auto: auto });
+  history.push(rec);
+  sortHistory();
+
+  const ok = rec.durationMs >= TARGET_MS;
+  let msg;
+  if (auto) {
+    msg = `⏰ Auto checkout at 9 hours. Saved as ${fmtHM(rec.durationMs)}`;
+  } else if (ok) {
+    msg = `✅ Completed ${fmtHM(rec.durationMs)} — 7 hours reached`;
+  } else {
+    msg = `⚠️ Checked out after ${fmtHM(rec.durationMs)} — below 7 hours`;
+  }
+
+  state = { checkedIn: false, checkinTs: null, reminderSent: false };
+  save();
+  hideBanner('reminderBanner');
+  showBanner('welcomeBanner', ok ? 'success' : 'warning', msg);
+  renderAll();
+}
+
+function autoCheckout() {
+  finishCheckout(state.checkinTs + AUTO_CHECKOUT_MS, true);
+  if (document.getElementById('activeScreen').classList.contains('active')) {
+    switchScreen('welcomeScreen');
+  }
+}
+
+function fireReminder() {
+  const exitStr = fmtTime(state.checkinTs + TARGET_MS);
+  showBanner('reminderBanner', 'warning', `⏰ 5 minutes left to 7 hours — you can leave at ${exitStr}`);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('⏰ 5 minutes to 7 hours', { body: 'You can leave at ' + exitStr });
+    } catch (e) {}
+  }
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+}
+
+/* ---------- Live timer (runs every second) ---------- */
+function tick() {
+  if (!state.checkedIn) {
+    document.getElementById('elapsedTime').textContent = '0h 0m 0s';
+    document.getElementById('remainingText').textContent = 'No active check-in';
+    return;
+  }
+  const elapsed = Date.now() - state.checkinTs;
+
+  if (elapsed >= AUTO_CHECKOUT_MS) {
+    autoCheckout();
+    return;
+  }
+
+  document.getElementById('elapsedTime').textContent = fmtHMS(elapsed);
+  document.getElementById('remainingText').textContent =
+    elapsed < TARGET_MS
+      ? `Remaining to 7 hours: ${fmtHM(TARGET_MS - elapsed)}`
+      : '✅ 7 hours completed';
+
+  if (!state.reminderSent && elapsed >= TARGET_MS - REMINDER_BEFORE_MS) {
+    state.reminderSent = true;
+    save();
+    if (elapsed < TARGET_MS) fireReminder();
+  }
+}
+
+/* ---------- Active screen render ---------- */
+function renderActive() {
+  if (state.checkedIn) {
+    document.getElementById('checkinTime').textContent = fmtTime(state.checkinTs);
+    document.getElementById('targetTime').textContent = fmtTime(state.checkinTs + TARGET_MS);
+    document.getElementById('alarmNote').textContent =
+      `🔔 Alarm at ${fmtTime(state.checkinTs + TARGET_MS - REMINDER_BEFORE_MS)} (5 minutes before)`;
+    document.getElementById('autoNote').textContent =
+      `Auto checkout at ${fmtTime(state.checkinTs + AUTO_CHECKOUT_MS)} (9 hours) if you forget`;
+    document.getElementById('welcomeStatus').textContent =
+      `Checked in since ${fmtTime(state.checkinTs)} — tap to view`;
+  } else {
+    document.getElementById('checkinTime').textContent = '--:--';
+    document.getElementById('targetTime').textContent = '--:--';
+    document.getElementById('welcomeStatus').textContent = 'Tap to check in';
+  }
+  tick();
+}
+
+/* ---------- Past entry ---------- */
+function getPastValues() {
+  const d = document.getElementById('pastDate').value;
+  const ci = document.getElementById('pastIn').value;
+  const co = document.getElementById('pastOut').value;
+  if (!d || !ci || !co) return { incomplete: true };
+
+  const a = new Date(`${d}T${ci}`).getTime();
+  const b = new Date(`${d}T${co}`).getTime();
+
+  if (a > Date.now()) return { error: 'Check-in cannot be in the future' };
+  if (b <= a) return { error: 'Check-out must be after check-in' };
+  if (b - a > AUTO_CHECKOUT_MS) return { error: 'Duration is more than 9 hours. Please check the times' };
+  return { a, b, ms: b - a };
+}
+
+function updatePastPreview() {
+  const v = getPastValues();
+  const el = document.getElementById('pastPreview');
+  if (v.incomplete) { el.style.display = 'none'; return; }
+  if (v.error) { showBanner('pastPreview', 'warning', '⚠️ ' + v.error); return; }
+  if (v.ms >= TARGET_MS) showBanner('pastPreview', 'success', `✅ ${fmtHM(v.ms)} — 7 hours reached`);
+  else showBanner('pastPreview', 'warning', `⚠️ ${fmtHM(v.ms)} — below 7 hours`);
+}
+
+function savePastEntry() {
+  const v = getPastValues();
+  if (v.incomplete) { alert('Please fill date, check-in and check-out'); return; }
+  if (v.error) { alert(v.error); return; }
+  history.push(makeWork(v.a, v.b, { manual: true }));
+  sortHistory();
+  save();
+  clearPastForm();
+  renderHistory();
+  showBanner('historyBanner', v.ms >= TARGET_MS ? 'success' : 'warning',
+    v.ms >= TARGET_MS ? `✅ Past entry saved: ${fmtHM(v.ms)}` : `⚠️ Past entry saved: ${fmtHM(v.ms)} — below 7 hours`);
+  switchScreen('historyScreen');
+}
+
+function clearPastForm() {
+  document.getElementById('pastDate').value = '';
+  document.getElementById('pastIn').value = '';
+  document.getElementById('pastOut').value = '';
+  hideBanner('pastPreview');
+}
+
+/* ---------- Leave ---------- */
+function selectLeaveType(el, type) {
+  selectedLeaveType = type;
+  document.querySelectorAll('.leave-type-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function markLeave() {
+  const d = document.getElementById('leaveDate').value;
+  if (!d) { alert('Please select a date'); return; }
+  if (!selectedLeaveType) { alert('Please select a leave type'); return; }
+  history.push({ type: 'leave', ts: new Date(d + 'T00:00:00').getTime(), leaveType: selectedLeaveType });
+  sortHistory();
+  save();
+  resetLeaveForm();
+  renderHistory();
+  showBanner('historyBanner', 'success', '✅ Leave marked successfully');
+  switchScreen('historyScreen');
+}
+
+function resetLeaveForm() {
+  document.getElementById('leaveDate').value = '';
+  selectedLeaveType = null;
+  document.querySelectorAll('.leave-type-option').forEach(o => o.classList.remove('selected'));
+}
+
+/* ---------- History ---------- */
+function sortHistory() {
+  history.sort((x, y) => y.ts - x.ts);
+}
+
+function pickMonth(key) {
+  selectedMonth = key;
+  selectedWeek = 0;
+  renderHistory();
+}
+
+function pickWeek(w) {
+  selectedWeek = w;
+  renderHistory();
+}
+
+function renderHistory() {
+  const monthBar = document.getElementById('monthFilter');
+  const weekBar = document.getElementById('weekFilter');
+  const list = document.getElementById('historyList');
+  const summary = document.getElementById('summaryBox');
+
+  if (history.length === 0) {
+    monthBar.innerHTML = '';
+    weekBar.innerHTML = '';
+    summary.innerHTML = '';
+    list.innerHTML = '<div class="empty-state">📋 No records yet.<br>Check in, add a past entry, or mark a leave.</div>';
+    visibleRecords = [];
+    return;
+  }
+
+  const months = [...new Set(history.map(r => monthKeyOf(r.ts)))].sort().reverse();
+  if (!selectedMonth || !months.includes(selectedMonth)) selectedMonth = months[0];
+
+  monthBar.innerHTML = months.map(k =>
+    `<button class="filter-tab ${k === selectedMonth ? 'active' : ''}" onclick="pickMonth('${k}')">${monthLabel(k)}</button>`
+  ).join('');
+
+  let weekHtml = `<button class="week-btn ${selectedWeek === 0 ? 'active' : ''}" onclick="pickWeek(0)">All weeks</button>`;
+  for (let w = 1; w <= 4; w++) {
+    weekHtml += `<button class="week-btn ${selectedWeek === w ? 'active' : ''}" onclick="pickWeek(${w})">Week ${w}</button>`;
+  }
+  weekBar.innerHTML = weekHtml;
+
+  visibleRecords = history
+    .filter(r => monthKeyOf(r.ts) === selectedMonth && (selectedWeek === 0 || weekOf(r.ts) === selectedWeek))
+    .sort((x, y) => y.ts - x.ts);
+
+  const works = visibleRecords.filter(r => r.type === 'checkin');
+  const shortDays = works.filter(r => r.durationMs < TARGET_MS).length;
+  const leaves = visibleRecords.filter(r => r.type === 'leave').length;
+  summary.innerHTML = `
+    <div>Worked days<b>${works.length}</b></div>
+    <div>Below 7h<b>${shortDays}</b></div>
+    <div>Leaves<b>${leaves}</b></div>`;
+
+  if (visibleRecords.length === 0) {
+    list.innerHTML = '<div class="empty-state">📋 No records for this filter</div>';
+    return;
+  }
+
+  list.innerHTML = visibleRecords.map(r => {
+    if (r.type === 'checkin') {
+      const ok = r.durationMs >= TARGET_MS;
+      const tags = [r.manual ? 'Manual entry' : '', r.auto ? 'Auto checkout (9h)' : ''].filter(Boolean)
+        .map(t => `<span class="tag">${t}</span>`).join(' ');
+      return `
+        <div class="history-item">
+          <div>
+            <div class="history-date">${fmtDate(r.ts)}</div>
+            <div class="history-time">${fmtTime(r.checkinTs)} – ${fmtTime(r.checkoutTs)}</div>
+            ${tags}
+          </div>
+          <div class="badge ${ok ? 'ok' : 'short'}">${fmtHM(r.durationMs)} ${ok ? '✅' : '⚠️'}</div>
+        </div>`;
+    }
+    return `
+      <div class="history-item leave">
+        <div>
+          <div class="history-date">${fmtDate(r.ts)}</div>
+          <div class="history-time">${r.leaveType}</div>
+        </div>
+        <div class="badge leave">LEAVE</div>
+      </div>`;
+  }).join('');
+}
+
+/* ---------- Export ---------- */
+function exportCSV() {
+  if (visibleRecords.length === 0) { alert('No records to export'); return; }
+  let csv = 'Date,Type,Check-in,Check-out,Duration,Status,Leave Type,Entry\n';
+  visibleRecords.forEach(r => {
+    if (r.type === 'checkin') {
+      const status = r.durationMs >= TARGET_MS ? 'Target reached' : 'Below 7 hours';
+      const entry = r.auto ? 'Auto checkout' : (r.manual ? 'Manual' : 'Live');
+      csv += `"${fmtDate(r.ts)}","Work","${fmtTime(r.checkinTs)}","${fmtTime(r.checkoutTs)}","${fmtHM(r.durationMs)}","${status}","","${entry}"\n`;
+    } else {
+      csv += `"${fmtDate(r.ts)}","Leave","","","","","${r.leaveType}",""\n`;
+    }
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `work-tracker-${monthKeyOf(visibleRecords[0].ts)}.csv`;
+  link.click();
+}
+
+function exportPDF() {
+  if (visibleRecords.length === 0) { alert('No records to export'); return; }
+  if (typeof html2pdf === 'undefined') { alert('PDF library not loaded. Check internet and try again.'); return; }
+  html2pdf().set({
+    margin: 10,
+    filename: `work-tracker-${monthKeyOf(visibleRecords[0].ts)}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+  }).from(document.getElementById('historyList')).save();
+}
+
+/* ---------- Screens & init ---------- */
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.toggle('active', b.dataset.screen === id));
+
+  if (id === 'historyScreen') renderHistory();
+  if (id === 'leaveScreen' && !document.getElementById('leaveDate').value) {
+    document.getElementById('leaveDate').value = todayKey();
+  }
+  if (id === 'pastScreen') {
+    document.getElementById('pastDate').max = todayKey();
+  }
+  if (id === 'activeScreen') renderActive();
+}
+
+function renderAll() {
+  const now = new Date();
+  document.getElementById('headerDate').textContent =
+    now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  renderActive();
+  renderHistory();
+}
+
+function init() {
+  load();
+  renderAll();
+  if (state.checkedIn) {
+    switchScreen('activeScreen');
+  } else {
+    switchScreen('welcomeScreen');
+  }
+  setInterval(tick, 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) tick();
+  });
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
